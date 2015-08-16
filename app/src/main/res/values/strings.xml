@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">TravelTracker</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="memory_dialog_title">Add a new memory</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+</resources>
