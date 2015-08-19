@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,GoogleMap.OnMapClickListener,
-        MemoryDialogFragment.Listener,
+        MemoryDialogFragment.Listener,GoogleMap.OnMarkerDragListener,
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
     private static final String TAG = "MainActivityLog";
@@ -34,6 +34,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private  GoogleMap mGoogleMap;
     private GoogleApiClient mGoogleApiClient;
     private HashMap<String,Memory> mMemories = new HashMap<>();
+    private MemoriesDataSource mDataSource;
 
 
     @Override
@@ -43,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        mDataSource = new MemoriesDataSource(this);
 
     }
 
@@ -52,7 +54,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mGoogleMap = googleMap;
         mGoogleMap.setMyLocationEnabled(true);
         mGoogleMap.setOnMapClickListener(this);
-        mGoogleMap.setInfoWindowAdapter( new MarkerAdapter(getLayoutInflater(),mMemories)  );
+
+        mGoogleMap.setInfoWindowAdapter(new MarkerAdapter(getLayoutInflater(), mMemories));
+        mGoogleMap.setOnMarkerDragListener(this);
+        List<Memory> memories = mDataSource.getAllMemories();
+        Log.d(TAG, "Memores are:" + memories);
+
+
+        // Add all markers saved in database
+        for (Memory memory: memories) {
+            addMarker(memory);
+        }
     }
 
 
@@ -60,6 +72,59 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onMapClick(LatLng latLng) {
         Log.d(TAG, "Latitude and Longitude: " + latLng);
 
+        Memory memory =new Memory();
+
+        updateMemoryPosition(memory, latLng);
+
+
+
+        MemoryDialogFragment.newInstance (memory).show(getFragmentManager(), MEMORY_DIALOG_TAG);
+
+
+    }
+
+
+
+    @Override
+    public void OnSaveClicked(Memory memory) {
+        addMarker(memory);
+        mDataSource.createMemory(memory);
+
+    }
+
+    private void addMarker(Memory memory) {
+        Marker marker = mGoogleMap.addMarker(new MarkerOptions()
+                .draggable(true)
+                .position(new LatLng(memory.latitude,memory.longitude))   );
+
+        mMemories.put(marker.getId(), memory);
+    }
+
+    @Override
+    public void OnCancelClicked(Memory memory) {
+
+    }
+
+    @Override
+    public void onMarkerDrag(Marker marker) {
+
+    }
+
+    @Override
+    public void onMarkerDragEnd(Marker marker) {
+      Memory memory = mMemories.get(marker.getId());
+        updateMemoryPosition(memory,marker.getPosition());
+        mDataSource.updateMemory(memory);
+
+    }
+
+    @Override
+    public void onMarkerDragStart(Marker marker) {
+
+    }
+
+
+    private void updateMemoryPosition(Memory memory, LatLng latLng) {
         Geocoder geocoder= new Geocoder(this);
         List<Address> matches = null;
 
@@ -75,29 +140,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         String city = bestMatch.getAddressLine(maxLine - 1);
         String country = bestMatch.getAddressLine(maxLine);
 
-        Memory memory =new Memory();
+
         memory.city = city;
         memory.country = country;
         memory.latitude = latLng.latitude;
         memory.longitude = latLng.longitude;
-
-
-
-        MemoryDialogFragment.newInstance (memory).show(getFragmentManager(), MEMORY_DIALOG_TAG);
-
-    }
-
-    @Override
-    public void OnSaveClicked(Memory memory) {
-        Marker marker = mGoogleMap.addMarker(new MarkerOptions()
-                .position(new LatLng(memory.latitude,memory.longitude))   );
-
-        mMemories.put(marker.getId(),memory);
-    }
-
-    @Override
-    public void OnCancelClicked(Memory memory) {
-
     }
 
     //Not use yet

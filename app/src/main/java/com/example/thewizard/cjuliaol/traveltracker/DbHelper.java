@@ -12,13 +12,13 @@ public class DbHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME ="traveltracker.db";
     private static final int DATABASE_VERSION =1;
 
-    private static final String MEMORIES_TABLE="memories";
-    private static final String COLUMN_LATITUDE="latitude";
-    private static final String COLUMN_LONGITUDE="longitude";
-    private static final String COLUMN_CITY="city";
-    private static final String COLUMN_COUNTRY="country";
-    private static final String COLUMN_NOTES="notes";
-    private static final String COLUMN_ID="_id";
+    public static final String MEMORIES_TABLE="memories";
+    public static final String COLUMN_LATITUDE="latitude";
+    public static final String COLUMN_LONGITUDE="longitude";
+    public static final String COLUMN_CITY="city";
+    public static final String COLUMN_COUNTRY="country";
+    public static final String COLUMN_NOTES="notes";
+    public static final String COLUMN_ID="_id";
     private static DbHelper singleton =null;
 
     public static DbHelper getInstance(Context context){
