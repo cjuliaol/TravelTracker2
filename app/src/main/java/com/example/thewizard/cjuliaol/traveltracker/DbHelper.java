@@ -21,7 +21,7 @@ public class DbHelper extends SQLiteOpenHelper {
     public static final String COLUMN_ID="_id";
     private static DbHelper singleton =null;
 
-    public static DbHelper getInstance(Context context){
+    public synchronized static DbHelper getInstance(Context context){
 
         if( singleton == null) {
           singleton = new DbHelper(context.getApplicationContext());

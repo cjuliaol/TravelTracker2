@@ -1,10 +1,14 @@
 package com.example.thewizard.cjuliaol.traveltracker;
 
 import android.app.AlertDialog;
+import android.app.LoaderManager;
 import android.content.DialogInterface;
+import android.content.Loader;
+import android.database.Cursor;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -26,8 +30,8 @@ import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,GoogleMap.OnMapClickListener,
-        MemoryDialogFragment.Listener,GoogleMap.OnMarkerDragListener,
-        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+        MemoryDialogFragment.Listener,GoogleMap.OnMarkerDragListener,GoogleMap.OnInfoWindowClickListener,
+        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LoaderManager.LoaderCallbacks<Cursor> {
 
     private static final String TAG = "MainActivityLog";
     private static final String MEMORY_DIALOG_TAG = "MemoryDialogTag";
@@ -43,25 +47,59 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main);
 
         MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+
         mDataSource = new MemoriesDataSource(this);
+
+        // CJL: This works with the loader classes: DbCursorLoader, MemoriesLoader and interface LoaderCallbacks<>
+        // This Loader will manage our Cursor over the lifecycle of an Activity. Avoiding refetch when recreate activity
+        // This mecanism persists beyond activities
+        getLoaderManager().initLoader(0, null, this);
+
+        // CJL: Having both the Loader and the map be asynchronous caused some problems which we fixed by waiting for the map to load
+        //mapFragment.getMapAsync(this);
+
+        mGoogleMap = mapFragment.getMap();
+        onMapReady(mGoogleMap);
+
 
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
 
-        mGoogleMap = googleMap;
+
         mGoogleMap.setMyLocationEnabled(true);
         mGoogleMap.setOnMapClickListener(this);
 
         mGoogleMap.setInfoWindowAdapter(new MarkerAdapter(getLayoutInflater(), mMemories));
         mGoogleMap.setOnMarkerDragListener(this);
-        List<Memory> memories = mDataSource.getAllMemories();
-        Log.d(TAG, "Memores are:" + memories);
+        mGoogleMap.setOnInfoWindowClickListener(this);
 
 
-        // Add all markers saved in database
+
+        // Comment it to use DbCursorLoader and MemoriesLoader instead. This is for better when rotate, recreate, etc.
+        /*new AsyncTask<Void,Void,List<Memory>>() {
+            @Override
+            protected List<Memory> doInBackground(Void... params) {
+                return mDataSource.getAllMemories();
+            }
+
+            @Override
+            protected void onPostExecute(List<Memory> memories) {
+               Log.d(TAG,"Got results");
+                onFetchedMemories(memories);
+            }
+        }.execute();
+
+        //List<Memory> memories =
+        Log.d(TAG, "End of MapReady");*/
+
+
+
+    }
+
+    private void onFetchedMemories(List<Memory> memories) {
+        // CJL: Add all markers saved in database
         for (Memory memory: memories) {
             addMarker(memory);
         }
@@ -90,6 +128,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         addMarker(memory);
         mDataSource.createMemory(memory);
 
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        Log.d(TAG,"onCreateLoader");
+
+        return new MemoriesLoader(this, mDataSource);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+       Log.d(TAG,"onLoadFinished");
+        onFetchedMemories(mDataSource.cursorToMemories(data));
     }
 
     private void addMarker(Memory memory) {
@@ -123,6 +179,45 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
+    @Override
+    public void onInfoWindowClick(final Marker marker) {
+        Log.d(TAG,"Clicked on InfoWindows");
+        final Memory memory = mMemories.get(marker.getId());
+
+
+        AlertDialog.Builder builder =  new AlertDialog.Builder(this);
+       String [] actions = {"Edit","Delete"};
+        builder
+                .setTitle(memory.city + ", " + memory.country)
+                .setItems(actions, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (which == 1) {  // CJL: index in actions Array
+                            marker.remove();
+                            mDataSource.deleteMemory(memory);
+                        }
+                    }
+                });
+
+        //CJL: Another way to do it
+        /*builder .setTitle("Do you want delete memory?")
+                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+               Log.d(TAG,"Clicked delete button");
+                marker.remove();
+            }
+        })
+                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Log.d(TAG,"Clicked No button");
+                    }
+                });*/
+
+        builder.create().show();
+
+    }
 
     private void updateMemoryPosition(Memory memory, LatLng latLng) {
         Geocoder geocoder= new Geocoder(this);

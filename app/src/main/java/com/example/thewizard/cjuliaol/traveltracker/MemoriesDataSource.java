@@ -33,27 +33,38 @@ public class MemoriesDataSource {
         values.put(DbHelper.COLUMN_LATITUDE, memory.latitude);
         values.put(DbHelper.COLUMN_LONGITUDE, memory.longitude);
 
-      memory.id =  mDbHelper.getWritableDatabase().insert(mDbHelper.MEMORIES_TABLE, null, values);
+        memory.id = mDbHelper.getWritableDatabase().insert(mDbHelper.MEMORIES_TABLE, null, values);
 
     }
 
 
     public List<Memory> getAllMemories() {
+
+        Cursor cursor = allMemoriesCursor();
+        return cursorToMemories(cursor);
+
+    }
+
+
+    public Cursor allMemoriesCursor() {
+        return mDbHelper.getReadableDatabase().query(mDbHelper.MEMORIES_TABLE, allColumns, null, null, null, null, null);
+    }
+
+    public List<Memory> cursorToMemories(Cursor cursor) {
+
         List<Memory> memories = new ArrayList<>();
-        Cursor cursor = mDbHelper.getReadableDatabase().query(mDbHelper.MEMORIES_TABLE, allColumns, null, null, null, null, null);
         cursor.moveToFirst();
         while (!cursor.isAfterLast()) {
             Memory memory = cursorToMemory(cursor);
             memories.add(memory);
             cursor.moveToNext();
         }
-        cursor.close();
+      //  cursor.close(); Comment it because the cursor loader handle when to close in the lifecycle of activity
 
-        return  memories;
-
+        return memories;
     }
 
-    public void updateMemory(Memory memory){
+    public void updateMemory(Memory memory) {
         ContentValues values = new ContentValues();
         values.put(DbHelper.COLUMN_CITY, memory.city);
         values.put(DbHelper.COLUMN_COUNTRY, memory.country);
@@ -61,15 +72,24 @@ public class MemoriesDataSource {
         values.put(DbHelper.COLUMN_LATITUDE, memory.latitude);
         values.put(DbHelper.COLUMN_LONGITUDE, memory.longitude);
 
-        String [] whereArgs = {String.valueOf(memory.id) };
+        String[] whereArgs = {String.valueOf(memory.id)};
 
         mDbHelper.getWritableDatabase()
                 .update(DbHelper.MEMORIES_TABLE,
                         values,
                         DbHelper.COLUMN_ID + "=?",
                         whereArgs
-                 );
+                );
 
+    }
+
+    public void deleteMemory(Memory memory) {
+        String[] whereArgs = {String.valueOf(memory.id)};
+
+        mDbHelper.getWritableDatabase()
+                .delete(DbHelper.MEMORIES_TABLE,
+                        DbHelper.COLUMN_ID + "=?",
+                        whereArgs);
     }
 
     private Memory cursorToMemory(Cursor cursor) {
